@@ -1,0 +1,96 @@
+ROBUSTNESS CHECK LOG
+Rebuilt from the current source during submission preflight.
+Compiler: MinGW.org GCC 6.3.0; -std=c++17 -Wall -Wextra -Wpedantic.
+Each variation changes one plant parameter; controller gains stay fixed.
+Check 1 mismatch under deliberate parameter changes is expected.
+Check 2 settling uses the supplied strict 0.1 deg comparison. A result at
+the phase end is not a verified settling time; floating-point rounding
+can classify a displayed 0.10 deg residual as outside that band.
+The production plant.hpp and controller.hpp are not changed by this run.
+
+--- BASELINE: gain=1.3, time constant=0.07 s, backlash half-width=2.5 deg ---
+CHECK 1 -- plant.hpp against the real bench data
+  step_test      max err =   0.100 deg   rms =   0.007 deg   -- looks right
+  reversal_test  max err =   0.000 deg   rms =   0.000 deg   -- looks right
+  deadband_test  max err =   0.000 deg   rms =   0.000 deg   -- looks right
+
+CHECK 2 -- controller.hpp against plant.hpp (move -> reversal -> small trim)
+  large move       target= 20.00  end= 20.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.71s into phase
+  reversal         target= 12.00  end= 12.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.46s into phase
+  on-centre trim   target= 13.50  end= 13.50 (err +0.00)  overshoot=0.00 deg  settled by t=1.55s into phase
+
+
+--- LOW GAIN: gain=1.0, time constant=0.07 s, backlash half-width=2.5 deg ---
+CHECK 1 -- plant.hpp against the real bench data
+  step_test      max err =  13.600 deg   rms =  12.021 deg   -- doesn't match
+  reversal_test  max err =   9.500 deg   rms =   5.741 deg   -- doesn't match
+  deadband_test  max err =   1.200 deg   rms =   1.153 deg   -- doesn't match
+
+CHECK 2 -- controller.hpp against plant.hpp (move -> reversal -> small trim)
+  (plant.hpp doesn't match the real data yet -- this check is only testing your controller
+   against your OWN model, not the real actuator. Fix Check 1 first.)
+  large move       target= 20.00  end= 19.90 (err -0.10)  overshoot=0.00 deg  settled by t=2.27s into phase
+  reversal         target= 12.00  end= 12.10 (err +0.10)  overshoot=0.00 deg  settled by t=4.99s into phase
+  on-centre trim   target= 13.50  end= 13.40 (err -0.10)  overshoot=0.00 deg  settled by t=2.10s into phase
+
+
+--- HIGH GAIN: gain=1.6, time constant=0.07 s, backlash half-width=2.5 deg ---
+CHECK 1 -- plant.hpp against the real bench data
+  step_test      max err =  13.600 deg   rms =  12.023 deg   -- doesn't match
+  reversal_test  max err =   9.500 deg   rms =   5.722 deg   -- doesn't match
+  deadband_test  max err =   1.200 deg   rms =   0.809 deg   -- doesn't match
+
+CHECK 2 -- controller.hpp against plant.hpp (move -> reversal -> small trim)
+  (plant.hpp doesn't match the real data yet -- this check is only testing your controller
+   against your OWN model, not the real actuator. Fix Check 1 first.)
+  large move       target= 20.00  end= 20.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.35s into phase
+  reversal         target= 12.00  end= 12.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.07s into phase
+  on-centre trim   target= 13.50  end= 13.50 (err +0.00)  overshoot=0.00 deg  settled by t=1.26s into phase
+
+
+--- SHORT TIME CONSTANT: gain=1.3, time constant=0.04 s, backlash half-width=2.5 deg ---
+CHECK 1 -- plant.hpp against the real bench data
+  step_test      max err =   0.600 deg   rms =   0.314 deg   -- looks right
+  reversal_test  max err =   0.400 deg   rms =   0.305 deg   -- looks right
+  deadband_test  max err =   0.100 deg   rms =   0.020 deg   -- looks right
+
+CHECK 2 -- controller.hpp against plant.hpp (move -> reversal -> small trim)
+  large move       target= 20.00  end= 19.90 (err -0.10)  overshoot=0.00 deg  settled by t=1.82s into phase
+  reversal         target= 12.00  end= 12.10 (err +0.10)  overshoot=0.00 deg  settled by t=4.99s into phase
+  on-centre trim   target= 13.50  end= 13.40 (err -0.10)  overshoot=0.00 deg  settled by t=1.65s into phase
+
+
+--- LONG TIME CONSTANT: gain=1.3, time constant=0.1 s, backlash half-width=2.5 deg ---
+CHECK 1 -- plant.hpp against the real bench data
+  step_test      max err =   0.600 deg   rms =   0.312 deg   -- looks right
+  reversal_test  max err =   0.400 deg   rms =   0.298 deg   -- looks right
+  deadband_test  max err =   0.100 deg   rms =   0.097 deg   -- looks right
+
+CHECK 2 -- controller.hpp against plant.hpp (move -> reversal -> small trim)
+  large move       target= 20.00  end= 20.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.58s into phase
+  reversal         target= 12.00  end= 12.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.18s into phase
+  on-centre trim   target= 13.50  end= 13.50 (err +0.00)  overshoot=0.00 deg  settled by t=1.53s into phase
+
+
+--- SMALL BACKLASH: gain=1.3, time constant=0.07 s, backlash half-width=2.0 deg ---
+CHECK 1 -- plant.hpp against the real bench data
+  step_test      max err =   0.600 deg   rms =   0.496 deg   -- looks right
+  reversal_test  max err =   0.500 deg   rms =   0.494 deg   -- looks right
+  deadband_test  max err =   0.500 deg   rms =   0.457 deg   -- looks right
+
+CHECK 2 -- controller.hpp against plant.hpp (move -> reversal -> small trim)
+  large move       target= 20.00  end= 20.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.69s into phase
+  reversal         target= 12.00  end= 12.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.38s into phase
+  on-centre trim   target= 13.50  end= 13.50 (err +0.00)  overshoot=0.00 deg  settled by t=1.35s into phase
+
+
+--- LARGE BACKLASH: gain=1.3, time constant=0.07 s, backlash half-width=3.0 deg ---
+CHECK 1 -- plant.hpp against the real bench data
+  step_test      max err =   0.600 deg   rms =   0.494 deg   -- looks right
+  reversal_test  max err =   0.500 deg   rms =   0.493 deg   -- looks right
+  deadband_test  max err =   0.500 deg   rms =   0.485 deg   -- looks right
+
+CHECK 2 -- controller.hpp against plant.hpp (move -> reversal -> small trim)
+  large move       target= 20.00  end= 20.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.74s into phase
+  reversal         target= 12.00  end= 12.00 (err +0.00)  overshoot=0.00 deg  settled by t=1.49s into phase
+  on-centre trim   target= 13.50  end= 13.50 (err +0.00)  overshoot=0.00 deg  settled by t=1.73s into phase

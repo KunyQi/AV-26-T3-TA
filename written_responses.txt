@@ -1,20 +1,89 @@
 ### Part A - recover the data (CAN decode)
 
-Frame ID kept:
+With the resources and the agent's help, I learned how to use the DBC to
+read the CAN logs and complete `decodeLog()`.
 
-Signal 1 (u_commanded):  byte position / endianness / signed? / scale / offset:
-Signal 2 (y_measured):   byte position / endianness / signed? / scale / offset:
+The first line of `data/step_test.log` is:
 
-Notes (anything odd in the logs, how you checked the decode against the PNGs):
+`(1705638751.000000) vcan0 200#00009600D12FB01D`
 
+This gives the timestamp, the CAN interface `vcan0`, the frame ID `200`
+(hexadecimal), and eight data bytes after `#`. The DBC defines the angle as:
 
+`SG_ MeasuredAngle : 0|16@1- (0.1,0) [0|0] "deg" Vector__XXX`
+
+I learned to read this as:
+
+- `SG_ MeasuredAngle`: a signal definition named MeasuredAngle.
+- `0|16`: start at bit 0 and read 16 bits, so bytes 0-1.
+- `@1-`: little-endian byte order and a signed number, allowing negative values.
+- `(0.1,0)`: multiply the raw number by 0.1, then add 0.
+- `[0|0]`: minimum/maximum information, both zero here; the decoder does not
+  use these values to limit the angle.
+- `"deg"`: degrees. `Vector__XXX` is a placeholder for the receiving node.
+
+In this first frame, angle bytes `00 00` give 0 deg. The separate
+`CmdAngularRate` definition uses bytes 2-3 with the same signed little-endian
+format and scale: `96 00` means 150, giving 15 deg/s.
+
+We kept only `0x200` frames (`STEER_ActuatorLog`, decimal 512 in the DBC)
+and started each file's time at its first kept frame. This produced 2,000
+rows for `step_test`, 6,000 for `reversal_test`, and 4,000 for `deadband_test`.
 
 ### Part B - identify system
 
+I looked at the three plots with the agent's help. In `step_test.png`, a
+15 deg/s command gives about 19.5 deg/s of movement, so the gain is about
+19.5 / 15 = 1.3. After the command stops, the angle keeps moving by about
+1.4 deg. This gives a time constant of about 1.4 / 19.5 = 0.07 s.
 
+I also learned the difference between a deadzone and backlash. A deadzone
+ignores small commands. Backlash allows some motor movement without moving
+the output. In `deadband_test.png`, the output first moves to about 2.6 deg,
+then stays flat even though the command keeps switching between +2 and -2
+deg/s. In `reversal_test.png`, the angle pauses at each change of direction.
+Together, these suggest backlash: the response depends on previous movement.
+We estimated about 5 deg of motor travel across the gap, or a 2.5 deg
+half-width.
+
+We filled in `step()` in `plant.hpp` with a gradual change in motor speed,
+integrated that speed to get angle, and added the backlash gap. The model
+matches these logs within about 0.1 deg, but this only checks the behaviour
+covered by these tests.
 
 ### Part C - control design choices
 
+I learned that PID means proportional, integral, and derivative. My simple
+understanding is that P looks at the current error, I adds up past errors,
+and D looks at the trend. This is closed-loop control: the measured angle
+is fed back to help decide the next command.
 
+With the agent's help, we used `kp = 2.5`, `ki = 0.08`, and `kd = 0.03`,
+with a command limit of +/-15 deg/s. D uses changes in the measured angle
+so a new target does not cause a sudden derivative kick. A 0.03 s filter
+smooths this term because the sensor changes in 0.1 deg steps. The integral
+is limited and stops growing when it would push the command further past
+its limit.
+
+When the angle is within 0.1 deg of the target and moving slowly, the
+controller clears the integral and commands zero to avoid tiny corrections.
+It uses only the target, measured angle, and `dt`, without using the plant
+model while running.
 
 ### Part D - reflection
+
+I started with very little CAN knowledge and no C++ experience. With the
+provided resources and an AI agent's help, I managed to complete Parts A-D.
+
+The starter plant could not explain the pauses at direction changes because
+it only added the commanded rate to the angle. We added motor-speed lag and
+backlash to match what the plots showed.
+
+In Part A, we parsed the logs, found the `0x200` frames, and completed
+`decodeLog()`. In Part B, we used the three plots to identify backlash rather
+than a deadzone and filled in `step()` in `plant.hpp`. In Part C, I learned
+about PID: P looks at the present error, I at past errors, and D at the trend.
+This helped me start to understand closed-loop control.
+
+I am still a beginner and have a lot to learn. I hope for more chances to
+challenge myself, see what I can do, and keep improving.

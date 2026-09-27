@@ -36,7 +36,11 @@
 //     ./decode
 
 #include <cstdio>
+#include <cstdint>
+#include <exception>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -52,8 +56,67 @@ struct Row {
 std::vector<Row> decodeLog(const std::string& path) {
     std::vector<Row> rows;
 
-    // TODO: your code here
-    (void)path;  // remove once you open the file
+    std::ifstream input(path);
+    if (!input) {
+        std::fprintf(stderr, "Could not open %s\n", path.c_str());
+        return rows;
+    }
+
+    bool haveOrigin = false;
+    double origin = 0.0;
+    std::string line;
+    while (std::getline(input, line)) {
+        std::istringstream fields(line);
+        char openParen = 0, closeParen = 0;
+        double timestamp = 0.0;
+        std::string interfaceName, frame;
+        if (!(fields >> openParen >> timestamp >> closeParen >> interfaceName >> frame) ||
+            openParen != '(' || closeParen != ')') {
+            continue;
+        }
+
+        const std::size_t separator = frame.find('#');
+        if (separator == std::string::npos) continue;
+
+        unsigned long frameId = 0;
+        try {
+            frameId = std::stoul(frame.substr(0, separator), nullptr, 16);
+        } catch (const std::exception&) {
+            continue;
+        }
+        if (frameId != 0x200) continue;  // STEER_ActuatorLog (DBC message 512)
+
+        const std::string payload = frame.substr(separator + 1);
+        if (payload.size() != 16) continue;  // this DBC message contains 8 bytes
+
+        std::uint8_t bytes[8]{};
+        bool validPayload = true;
+        for (std::size_t i = 0; i < 8; ++i) {
+            try {
+                bytes[i] = static_cast<std::uint8_t>(std::stoul(payload.substr(i * 2, 2), nullptr, 16));
+            } catch (const std::exception&) {
+                validPayload = false;
+                break;
+            }
+        }
+        if (!validPayload) continue;
+
+        // DBC signals are Intel (little-endian), signed 16-bit values.
+        auto signed16 = [&bytes](std::size_t firstByte) -> int {
+            int raw = static_cast<int>(bytes[firstByte]) |
+                      (static_cast<int>(bytes[firstByte + 1]) << 8);
+            if (raw >= 0x8000) raw -= 0x10000;
+            return raw;
+        };
+
+        if (!haveOrigin) {
+            origin = timestamp;
+            haveOrigin = true;
+        }
+        rows.push_back({timestamp - origin,
+                        signed16(2) * 0.1,
+                        signed16(0) * 0.1});
+    }
 
     return rows;
 }

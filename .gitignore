@@ -1,0 +1,10 @@
+# Local build outputs
+/decode
+/decode.exe
+/checks/check_solution
+/checks/check_solution.exe
+
+# Generated check results and comparison plots
+/checks/*.csv
+/checks/*.png
+/data/*_yours.png
